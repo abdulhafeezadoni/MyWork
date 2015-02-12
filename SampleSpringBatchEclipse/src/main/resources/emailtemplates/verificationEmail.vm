@@ -1,0 +1,19 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<body>
+Dear Registered User,<p/>
+
+<h1>Welcome to Fosiness</h1> 
+You've taken your first step into a larger Food world, @${newMessage.subscriber}
+
+<h5>Please click the below link to activate your account</h5>
+
+<a href="http://localhost:8080/fosiness-web/services/user/verifyticket?ticketid=${newMessage.data.id}">http://localhost:8080/fosiness-web/services/user/verifyticket?ticketid=${newMessage.data.id}</a><br/>
+
+
+Thanks,<br/>
+Team Fosiness<br/>
+
+
+</body>
+</html>

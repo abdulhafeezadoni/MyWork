@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:batch="http://www.springframework.org/schema/batch"
+	xmlns:task="http://www.springframework.org/schema/task"
+	xsi:schemaLocation="http://www.springframework.org/schema/task http://www.springframework.org/schema/task/spring-task-3.0.xsd
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.0.xsd
+		http://www.springframework.org/schema/batch http://www.springframework.org/schema/batch/spring-batch-2.1.xsd">
+
+	<description>Email verification job configuration.</description>
+
+	<batch:job id="userVerificationEmailJob">
+		<batch:step id="step1">
+		
+			<batch:tasklet transaction-manager="transactionManager"
+				start-limit="100" >
+				<batch:chunk reader="pagingItemReader" processor="campaignCustomProcessorr" writer="campaignSubUpdateItemWriter"
+					commit-interval="${batch.registrationemail.items.commitinterval}" >
+					
+				</batch:chunk>
+			</batch:tasklet>
+		</batch:step>
+		
+	</batch:job>
+
+
+	<!-- stored job-meta in memory 
+		 check with Murali whether to use db tables to hold batch meta data
+	-->
+	
+	<bean id="jobRepository"
+		class="org.springframework.batch.core.repository.support.MapJobRepositoryFactoryBean">
+		<property name="transactionManager" ref="transactionManager" />
+		<!-- <property name="dataSource" ref="dataSource"/> -->
+	</bean>
+
+	
+
+	<bean id="jobLauncher"
+		class="org.springframework.batch.core.launch.support.SimpleJobLauncher">
+		<property name="jobRepository" ref="jobRepository" />
+	</bean>
+
+
+	<bean id="pagingItemReader"
+		class="org.springframework.batch.item.database.JdbcPagingItemReader"
+		scope="step">
+		<property name="dataSource" ref="mysqldataSource" />
+		<property name="queryProvider">
+			<bean
+				class="org.springframework.batch.item.database.support.SqlPagingQueryProviderFactoryBean">
+				<property name="dataSource" ref="mysqldataSource" />
+				<property name="selectClause" value="select c.templateid,cs.id, cs.subscriber,cs.data" />
+				<property name="fromClause" value="fosiness.campaign_subscribers cs,fosiness.campaign c" />
+				<property name="whereClause" value="cs.status='0' and cs.campaignid=c.id " />
+				<property name="sortKey" value="cs.id" />
+			</bean>
+		</property>
+		<!-- <property name="parameterValues"> 
+				<map> 
+					<entry key="name" value="#{jobParameters['name']}"/> 
+				</map> 
+			</property> -->
+		<property name="pageSize" value="${batch.registrationemail.items.commitinterval}" />
+		<property name="rowMapper">
+			<bean class="com.fosiness.batch.rowmapper.CampaignSubscriberMapper" />
+		</property>
+	</bean>
+	
+	
+	<bean id="campaignSubUpdateItemWriter"
+	class="org.springframework.batch.item.database.JdbcBatchItemWriter">
+	<property name="dataSource" ref="mysqldataSource" />
+	<property name="sql">
+		<value>
+            <![CDATA[
+            UPDATE campaign_subscribers SET status="1" WHERE id=:campaignId
+            ]]>
+		</value>
+	</property>
+	<!-- It will take care matching between object property and sql name parameter -->
+	<property name="itemSqlParameterSourceProvider">
+		<bean
+			class="org.springframework.batch.item.database.BeanPropertyItemSqlParameterSourceProvider" />
+	</property>
+</bean>
+  
+  <!-- Scheduling the Tasks -->
+  <bean id="runUserRegistrationEmailScheduler" class="com.fosiness.batch.main.RunUserRegistrationEmailScheduler" />  
+  <task:scheduled-tasks >  
+	<task:scheduled fixed-delay="100" ref="runUserRegistrationEmailScheduler" method="run" cron="${batch.task.registrationemail.cronstring}" />
+   </task:scheduled-tasks>
+
+
+
+</beans>
